@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   title: 'Multi Twitch Stream Viewer',
   description:
     'A web application that allows users to watch multiple Twitch streams simultaneously.',
+    
 }
 
 export default function RootLayout({
@@ -29,6 +30,7 @@ export default function RootLayout({
           <ThemeProvider theme={theme}>
             <CssBaseline />
             {children}
+            
           </ThemeProvider>
         </AppRouterCacheProvider>
       </body>
