@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Container, Paper, Typography, TextField, Button, Box, IconButton, Grid } from '@mui/material';
+import { Container, Paper, Typography, TextField, Button, Box, IconButton, Grid, Alert, Collapse } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -10,8 +10,13 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useStreamsStore, setStreamers } from '@/domain/streams/store'; 
 
 export default function Home() {
-  // 1. 動態輸入框狀態：預設只有一個空欄位，點擊按鈕可以自由增減
+  // 動態輸入框狀態
   const [inputs, setInputs] = useState<string[]>(['']);
+  
+  // 【新增狀態】用來記錄哪些欄位輸入錯誤（儲存有錯誤的 index）
+  const [errorIndices, setErrorIndices] = useState<number[]>([]);
+  // 【新增狀態】控制提示訊息的顯示與內容
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   // 從全域 Zustand Store 讀取實況主名單
   const streamers = useStreamsStore((state) => state.streamers);
@@ -21,32 +26,70 @@ export default function Home() {
     const nextInputs = [...inputs];
     nextInputs[index] = value;
     setInputs(nextInputs);
+
+    // 當使用者重新輸入時，自動移除該欄位的錯誤紅框
+    if (errorIndices.includes(index)) {
+      setErrorIndices(errorIndices.filter(i => i !== index));
+    }
+    if (errorIndices.length <= 1) {
+      setAlertMessage(null); // 如果沒錯誤了，關閉提示
+    }
   };
 
-  // 【新增功能】動態增加一個 URL 輸入框
+  // 動態增加一個 URL 輸入框
   const handleAddField = () => {
     setInputs([...inputs, '']);
   };
 
-  // 【新增功能】動態移除某一個 URL 輸入框
+  // 動態移除某一個 URL 輸入框
   const handleRemoveField = (indexToRemove: number) => {
-    // 如果只剩一欄，就清空它而不刪除欄位
     if (inputs.length === 1) {
       setInputs(['']);
+      setErrorIndices([]);
+      setAlertMessage(null);
       return;
     }
     setInputs(inputs.filter((_, index) => index !== indexToRemove));
+    // 同步更新錯誤索引的位置
+    setErrorIndices(prev => 
+      prev.filter(i => i !== indexToRemove).map(i => i > indexToRemove ? i - 1 : i)
+    );
   };
 
-  // 輔助函式：從輸入中解析出 Twitch ID
-  const getChannelName = (input: string) => {
-    if (!input.trim()) return null;
-    try {
-      const urlObj = new URL(input.includes('http') ? input : `https://${input}`);
-      const path = urlObj.pathname.split('/').filter(Boolean);
-      return path[0]; 
-    } catch (e) {
-      return input.trim(); 
+  // 【核心修改】精準驗證是否為合法的 Twitch 網址或 ID
+  const validateAndGetTwitchId = (input: string): { id: string | null; isValid: boolean } => {
+    const trimmed = input.trim();
+    if (!trimmed) return { id: null, isValid: true }; // 空白欄位不當作錯誤，直接忽略
+
+    // 檢查是否為網址
+    if (trimmed.includes('http://') || trimmed.includes('https://') || trimmed.includes('.')) {
+      try {
+        const urlObj = new URL(trimmed.includes('http') ? trimmed : `https://${trimmed}`);
+        
+        // 嚴格檢查：域名必須包含 twitch.tv
+        if (!urlObj.hostname.includes('twitch.tv')) {
+          return { id: null, isValid: false };
+        }
+        
+        const path = urlObj.pathname.split('/').filter(Boolean);
+        const channelId = path[0];
+        
+        // Twitch 帳號正規表示式：4到25個字元，只能是英文、數字、底線
+        const twitchIdRegex = /^[a-zA-Z0-9_]{4,25}$/;
+        if (channelId && twitchIdRegex.test(channelId)) {
+          return { id: channelId, isValid: true };
+        }
+        return { id: null, isValid: false };
+      } catch (e) {
+        return { id: null, isValid: false };
+      }
+    } else {
+      // 如果不是網址，檢查是不是純 Twitch ID 格式
+      const twitchIdRegex = /^[a-zA-Z0-9_]{4,25}$/;
+      if (twitchIdRegex.test(trimmed)) {
+        return { id: trimmed, isValid: true };
+      }
+      return { id: null, isValid: false };
     }
   };
 
@@ -55,19 +98,33 @@ export default function Home() {
     e.preventDefault();
     
     const validChannels: string[] = [];
-    inputs.forEach(input => {
-      const channelId = getChannelName(input);
-      if (channelId) {
-        validChannels.push(channelId);
+    const newErrorIndices: number[] = [];
+
+    inputs.forEach((input, index) => {
+      const { id, isValid } = validateAndGetTwitchId(input);
+      
+      if (!isValid) {
+        newErrorIndices.push(index);
+      } else if (id) {
+        validChannels.push(id);
       }
     });
 
+    // 如果有任何一欄填錯了（例如貼到 YouTube 或程式碼）
+    if (newErrorIndices.length > 0) {
+      setErrorIndices(newErrorIndices);
+      setAlertMessage("偵測到不合法的輸入！請確認是否皆為 Twitch 網址或正確的頻道 ID (不支援 YouTube 等其他網站)。");
+      return; // 🛑 攔截！不生出任何影片框框
+    }
+
+    // 檢查通過，正常生成
+    setAlertMessage(null);
+    setErrorIndices([]);
     if (validChannels.length > 0) {
       setStreamers(validChannels); 
     }
   };
 
-  // 精準刪除影片：改用 index 來過濾 Zustand 陣列，解決同名實況主一起被刪除的問題
   const handleRemoveStreamByIndex = (indexToRemove: number) => {
     const nextStreamers = streamers.filter((_, index) => index !== indexToRemove);
     setStreamers(nextStreamers);
@@ -75,24 +132,33 @@ export default function Home() {
 
   const handleClearAll = () => {
     setInputs(['']);
+    setErrorIndices([]);
+    setAlertMessage(null);
     setStreamers([]);
   };
 
   return (
     <Container maxWidth="xl" sx={{ marginTop: 4, marginBottom: 4 }}>
       
-      {/* 上方控制列：白底卡片視覺 */}
+      {/* 上方控制列 */}
       <Paper elevation={3} sx={{ padding: 4, marginBottom: 4 }}>
         <Typography variant='h4' component='h1' gutterBottom sx={{ fontWeight: 'bold' }}>
           Multi Twitch Stream Viewer
         </Typography>
         <Typography variant='body2' color="textSecondary" sx={{ marginBottom: 3 }}>
-          請在下方輸入 Twitch 頻道網址或 ID，您可以點擊「增加頻道」來管理多個輸入框。
+          請在下方輸入 Twitch 頻道網址或 ID。若輸入非 Twitch 網址（如 YouTube），系統將會攔截並提示。
         </Typography>
+
+        {/* 【新提示 UI】錯誤警告標籤 */}
+        <Collapse in={Boolean(alertMessage)} sx={{ marginBottom: 3 }}>
+          <Alert severity="error" onClose={() => setAlertMessage(null)}>
+            {alertMessage}
+          </Alert>
+        </Collapse>
         
         <Box component="form" onSubmit={handleGenerateStreams}>
           
-          {/* 修正後的 MUI v6 Grid 排版：Grid container 直接包裹 Grid size */}
+          {/* 輸入框網格 */}
           <Grid container spacing={2} sx={{ marginBottom: 3 }}>
             {inputs.map((value, index) => (
               <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
@@ -101,16 +167,18 @@ export default function Home() {
                     fullWidth
                     size="small"
                     variant="outlined"
+                    // 【動態錯誤特效】如果這個 index 填錯，框框會變紅並顯示提示文字
+                    error={errorIndices.includes(index)}
+                    helperText={errorIndices.includes(index) ? "非特意之 Twitch 格式" : ""}
                     label={`頻道 #${index + 1}`}
-                    placeholder="例如: sennna_aki"
+                    placeholder="例如: sennna_aki 或 Twitch 網址"
                     value={value}
                     onChange={(e) => handleInputChange(index, e.target.value)}
                   />
-                  {/* 輸入框旁邊的刪除垃圾桶 */}
                   <IconButton 
                     color="error" 
                     onClick={() => handleRemoveField(index)}
-                    disabled={inputs.length === 1 && !inputs[0]} // 只有一欄且為空時禁用
+                    disabled={inputs.length === 1 && !inputs[0]}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -121,7 +189,6 @@ export default function Home() {
 
           {/* 按鈕操作區 */}
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
-            {/* 左側：增加欄位按鈕 */}
             <Button 
               variant="outlined" 
               startIcon={<AddIcon />}
@@ -130,7 +197,6 @@ export default function Home() {
               增加頻道欄位
             </Button>
 
-            {/* 右側：清空與提交 */}
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button variant="outlined" color="inherit" onClick={handleClearAll}>
                 全部清空
@@ -149,13 +215,12 @@ export default function Home() {
           <Grid size={{ xs: 12, sm: 6 }} key={`${channelId}-${index}`}>
             <Box sx={{ 
               position: 'relative', 
-              paddingTop: '56.25%', // 16:9
+              paddingTop: '56.25%', 
               bgcolor: 'black', 
               borderRadius: 1, 
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
             }}>
               
-              {/* 改用 handleRemoveStreamByIndex(index)，點哪台就關哪台 */}
               <IconButton
                 onClick={() => handleRemoveStreamByIndex(index)}
                 sx={{
