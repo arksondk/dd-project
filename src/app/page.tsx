@@ -12,8 +12,11 @@ export interface InputItem {
 }
 
 export default function Home() {
-  const [inputs, setInputs] = useState<InputItem[]>([
-    { id: `input-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, value: '' }
+  const [inputs, setInputs] = useState<InputItem[]>(() => [
+    {
+      id: `input-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      value: '',
+    },
   ])
   const [errorIndices, setErrorIndices] = useState<number[]>([])
 
@@ -21,10 +24,13 @@ export default function Home() {
 
   const handleSyncDelete = (indexToRemove: number) => {
     const nextInputs = inputs.filter((_, index) => index !== indexToRemove)
-    
+
     if (nextInputs.length === 0) {
       setInputs([
-        { id: `input-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, value: '' }
+        {
+          id: `input-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          value: '',
+        },
       ])
     } else {
       setInputs(nextInputs)
@@ -36,16 +42,18 @@ export default function Home() {
         .map(i => (i > indexToRemove ? i - 1 : i)),
     )
 
-    const nextStreamers = streamers.filter((_, index) => index !== indexToRemove)
+    const nextStreamers = streamers.filter(
+      (_, index) => index !== indexToRemove,
+    )
     setStreamers(nextStreamers)
   }
 
   return (
     <Container maxWidth='xl' sx={{ marginTop: 4, marginBottom: 4 }}>
-      <ControlPanel 
-        inputs={inputs} 
-        setInputs={setInputs} 
-        errorIndices={errorIndices} 
+      <ControlPanel
+        inputs={inputs}
+        setInputs={setInputs}
+        errorIndices={errorIndices}
         setErrorIndices={setErrorIndices}
         onSyncDelete={handleSyncDelete}
       />

@@ -50,7 +50,7 @@ export default function ControlPanel({
   // ✨ 修正：增加欄位時加入防呆，超過 4 個就不再增加
   const handleAddField = () => {
     if (inputs.length >= 4) return
-    
+
     const uniqueId = `input-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     setInputs([...inputs, { id: uniqueId, value: '' }])
   }
@@ -65,14 +65,22 @@ export default function ControlPanel({
     const trimmed = input.trim()
     if (!trimmed) return { id: null, isValid: true }
 
-    if (trimmed.includes('http://') || trimmed.includes('https://') || trimmed.includes('.')) {
+    if (
+      trimmed.includes('http://') ||
+      trimmed.includes('https://') ||
+      trimmed.includes('.')
+    ) {
       try {
-        const urlObj = new URL(trimmed.includes('http') ? trimmed : `https://${trimmed}`)
-        if (!urlObj.hostname.includes('twitch.tv')) return { id: null, isValid: false }
+        const urlObj = new URL(
+          trimmed.includes('http') ? trimmed : `https://${trimmed}`,
+        )
+        if (!urlObj.hostname.includes('twitch.tv'))
+          return { id: null, isValid: false }
         const path = urlObj.pathname.split('/').filter(Boolean)
         const channelId = path[0]
         const twitchIdRegex = /^[a-zA-Z0-9_]{4,25}$/
-        if (channelId && twitchIdRegex.test(channelId)) return { id: channelId, isValid: true }
+        if (channelId && twitchIdRegex.test(channelId))
+          return { id: channelId, isValid: true }
         return { id: null, isValid: false }
       } catch {
         return { id: null, isValid: false }
@@ -97,7 +105,16 @@ export default function ControlPanel({
 
     if (newErrorIndices.length > 0) {
       setErrorIndices(newErrorIndices)
-      setAlertMessage('偵測到不合法的輸入！請確認是否皆為 Twitch 網址或正確的頻道 ID。')
+      setAlertMessage(
+        '偵測到不合法的輸入！請確認是否皆為 Twitch 網址或正確的頻道 ID。',
+      )
+      return
+    }
+
+    // 確認 validChannels 中的頻道 ID 沒有重複
+    const uniqueChannels = new Set(validChannels)
+    if (uniqueChannels.size !== validChannels.length) {
+      setAlertMessage('頻道 ID 中有重複項目，請確保每個頻道都是唯一的。')
       return
     }
 
@@ -108,7 +125,10 @@ export default function ControlPanel({
 
   const handleClearAll = () => {
     setInputs([
-      { id: `input-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, value: '' }
+      {
+        id: `input-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        value: '',
+      },
     ])
     setErrorIndices([])
     setAlertMessage(null)
@@ -117,11 +137,21 @@ export default function ControlPanel({
 
   return (
     <Paper elevation={3} sx={{ padding: 4, marginBottom: 4 }}>
-      <Typography variant='h4' component='h1' gutterBottom sx={{ fontWeight: 'bold' }}>
+      <Typography
+        variant='h4'
+        component='h1'
+        gutterBottom
+        sx={{ fontWeight: 'bold' }}
+      >
         Multi Twitch Stream Viewer
       </Typography>
-      <Typography variant='body2' color='textSecondary' sx={{ marginBottom: 3 }}>
-        請在下方輸入 Twitch 頻道網址或 ID。若輸入非 Twitch 網址（如 YouTube），系統將會攔截並提示。
+      <Typography
+        variant='body2'
+        color='textSecondary'
+        sx={{ marginBottom: 3 }}
+      >
+        請在下方輸入 Twitch 頻道網址或 ID。若輸入非 Twitch 網址（如
+        YouTube），系統將會攔截並提示。
       </Typography>
 
       <Collapse in={Boolean(alertMessage)} sx={{ marginBottom: 3 }}>
@@ -140,7 +170,9 @@ export default function ControlPanel({
                   size='small'
                   variant='outlined'
                   error={errorIndices.includes(index)}
-                  helperText={errorIndices.includes(index) ? '非特意之 Twitch 格式' : ''}
+                  helperText={
+                    errorIndices.includes(index) ? '非特意之 Twitch 格式' : ''
+                  }
                   label={`頻道 #${index + 1}`}
                   placeholder='例如: sennna_aki 或 Twitch 網址'
                   value={item.value}
@@ -158,11 +190,18 @@ export default function ControlPanel({
           ))}
         </Grid>
 
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 2,
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           {/* ✨ 修正：當 inputs.length >= 4 時，按鈕自動進入 disabled 狀態，並附帶提示文字 */}
-          <Button 
-            variant='outlined' 
-            startIcon={<AddIcon />} 
+          <Button
+            variant='outlined'
+            startIcon={<AddIcon />}
             onClick={handleAddField}
             disabled={inputs.length >= 4}
           >
@@ -173,7 +212,15 @@ export default function ControlPanel({
             <Button variant='outlined' color='inherit' onClick={handleClearAll}>
               全部清空
             </Button>
-            <Button variant='contained' color='secondary' type='submit' sx={{ px: 4 }}>
+            <Button
+              variant='contained'
+              color='secondary'
+              type='submit'
+              sx={{ px: 4 }}
+              disabled={
+                inputs.every(item => !item.value) || errorIndices.length > 0
+              }
+            >
               生成實況牆
             </Button>
           </Box>

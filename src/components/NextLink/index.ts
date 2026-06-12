@@ -1,1 +1,1 @@
-export { default } from './NextLink'
+export { NextLink as default, type NextLinkProps } from './NextLink'

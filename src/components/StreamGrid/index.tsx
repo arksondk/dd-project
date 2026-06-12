@@ -3,6 +3,9 @@
 import { Box, IconButton, Grid } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import { useStreamsStore } from '@/domain/streams/store'
+import MemoedPlayer from './Player'
+
+import 'twitch-video-element'
 
 interface StreamGridProps {
   onSyncDelete: (index: number) => void
@@ -16,7 +19,7 @@ export default function StreamGrid({ onSyncDelete }: StreamGridProps) {
   return (
     <Grid container spacing={3}>
       {streamers.map((channelId, index) => (
-        <Grid size={{ xs: 12, sm: 6 }} key={`stream-node-${channelId}-${index}`}>
+        <Grid size={{ xs: 12, sm: 6 }} key={`stream-node-${channelId}`}>
           <Box
             sx={{
               position: 'relative',
@@ -24,7 +27,7 @@ export default function StreamGrid({ onSyncDelete }: StreamGridProps) {
               bgcolor: 'black',
               borderRadius: 1,
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              overflow: 'hidden'
+              overflow: 'hidden',
             }}
           >
             {/* 右上角關閉按鈕 */}
@@ -50,17 +53,16 @@ export default function StreamGrid({ onSyncDelete }: StreamGridProps) {
             </IconButton>
 
             {/* 影片容器 */}
-            <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-              <iframe
-                src={`https://player.twitch.tv/?channel=${channelId}&parent=localhost&autoplay=true&muted=true`}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                  borderRadius: '4px',
-                }}
-                allowFullScreen
-              />
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+              }}
+            >
+              <MemoedPlayer channelId={channelId} />
             </Box>
           </Box>
         </Grid>

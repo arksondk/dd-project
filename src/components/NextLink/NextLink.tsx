@@ -1,4 +1,3 @@
 'use client'
-import Link, { LinkProps } from 'next/link'
 
-export default Link
+export { default as NextLink, type LinkProps as NextLinkProps } from 'next/link'
