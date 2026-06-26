@@ -15,7 +15,7 @@ import {
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { setStreamers, clearStreamers } from '@/domain/streams/store'
-import { InputItem } from '@/app/page'
+import { InputItem } from '@/app/(main)/page'
 
 interface ControlPanelProps {
   inputs: InputItem[]
