@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const isProduction = process.env.NODE_ENV === 'production'
-const REPO_PREFIX = '/multi-twitch-stream'
+const REPO_PREFIX = '/dd-project'
 
 const nextConfig: NextConfig = {
   /* config options here */
